@@ -1,0 +1,50 @@
+pg-online-schema-change perform --alter-statement 'ALTER TABLE lead_post_history DROP COLUMN purchased;'  --dbname "testdb" --host "localhost" --username "postgres" --wait-time-for-lock 5 --kill-backends --drop
+
+--pull-batch-count 2000
+  --delta-count 500
+
+
+pg-online-schema-change Installation:
+
+Requirements
+PostgreSQL 9.6 and later
+Ruby 2.6 and later
+Database user should have permissions for TRIGGER and/or a SUPERUSER
+
+
+Create a file called "Gemfile" without any extensions and add the following content into it
+
+    source "https://rubygems.org"
+    gem 'pg' '1.5.4'
+    gem "pg_online_schema_change", "0.9.4"
+
+Then
+Ruby Installation:- 
+To run Gemfiles, we need ruby
+
+NOTE: Ruby can't installed on root, need a separate user.
+So, create a user and give permissions to it as same root
+
+Then, Install ruby 3.1.3
+
+    \curl -sSL https://get.rvm.io | bash
+
+    rvm install 3.1.3
+
+    rvm use 3.1.3
+
+Then run 
+
+    bundle install 
+        or
+    gem install pg_online_schema_change
+    // while running this, may get an error, in those cases run the below commands
+        sudo apt-get install ruby-dev
+        gem install pg_online_schema_change
+
+
+export PGPASSWORD="mydbpassword"
+pg-online-schema-change perform --alter-statement 'ALTER TABLE employees RENAME COLUMN fname TO name' --dbname "sunildb" --host "localhost" --username "postgres" --wait-time-for-lock 5 --kill-backends  --drop
+
+
+C:\\Users\\SUNIL~1.GAN\\DOCUME~1\\TESTDB~1" --host "localhost" --port "5432" --username "postgres" --no-password --format=c --blobs --verbose "TestDB

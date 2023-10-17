@@ -1,0 +1,29 @@
+1st case
+Adding a Column:
+ALTER TABLE lead_post_history ADD COLUMN post_info text;
+
+2nd Case
+Dropping a Column:
+ALTER TABLE lead_post_history DROP COLUMN post_info;
+
+Changing the Data Type of a Column:
+ALTER TABLE lead_post_history ALTER COLUMN status SET DATA TYPE text;
+
+3rd case
+Renaming a Column:
+ALTER TABLE lead_post_history RENAME COLUMN post_status TO status;
+
+Adding a Constraint:
+ALTER TABLE lead_post_history ADD CONSTRAINT unq_trace_id UNIQUE(id);
+
+4th Case
+Dropping a Constraint:
+ALTER TABLE lead_post_history DROP CONSTRAINT unq_trace_id;
+
+5th Case 
+Rename Index
+ALTER INDEX IF EXISTS index_name RENAME TO modified_name;
+
+
+export PGPASSWORD ="our db password"
+pg-online-schema-change perform --alter-statement 'ALTER INDEX IF EXISTS unq_trace_id RENAME TO modified_name;'  --dbname "testdb" --host "localhost" --username "postgres" --wait-time-for-lock 5 --kill-backends --drop

@@ -1,0 +1,195 @@
+//All test case models....
+type User struct {
+	gorm.Model
+	Name string
+	Pets []Pet
+}
+
+type Pet struct {
+	gorm.Model
+	Name     string
+	User     User
+	UserID   uint 
+}
+
+
+//these are the base models..
+Test -1 
+
+Adding a New Column
+type User struct {
+	gorm.Model
+	Name string
+	Gender string
+	Pets []Pet
+}
+
+
+Test - 2
+Changing Data Type of a Column
+type User struct {
+	gorm.Model
+	Name string
+	Gender int //we can use 0 or 1
+	Pets []Pet
+}
+
+Test - 3
+Removing a Column
+type User struct {
+	gorm.Model
+	Name string
+	Pets []Pet
+}
+
+Test - 4  & 11
+Adding Unique Constraints
+type User struct {
+	gorm.Model
+	Name string
+	Email string `gorm:"unique"`
+	Pets []Pet
+}
+
+Test - 5 & 12
+Adding Foreign Key Constraints
+//By default it already implies while doing intial migrations...
+type Pet struct {
+	gorm.Model
+	Name     string
+	User     User
+	UserID   uint `gorm:"foreignKey:UserID"` 
+}
+
+Test - 6 & 13
+Modifying Indexes -- for this I have to check gorm .....
+
+type Pet struct {
+	gorm.Model
+	Name     string
+	User     User
+	UserID   uint 
+	DeletedAt *time.Time `gorm:"index:idx_users_deleted_at,sort:ASC,nulls:LAST"`
+}
+
+Test - 7 & 14
+Renaming a Table  --need to check --When we want data in old table, we have to manually write a declarative migration and will get that.
+type User struct {
+	gorm.Model
+	Name string `gorm:"unique"`
+	Pets []Pet
+}
+//Here the other tables which used the User should also need to change
+
+// Use the "tableName" tag to specify the new table name
+func (User) TableName() string {
+    return "Owner"
+}
+//In this .. only create the table structure with empty data.. if we want data we have to do manually as the data and old table still remains same
+//or else will create a new Struct with same fields and create a migration that will copy all the data
+
+//in 967 migration at line 25 , we have the query we can simply copy that query and create a migrations and apply..
+
+Test - 8 
+Adding Multiple Columns
+type User struct {
+	gorm.Model
+	Name string `gorm:"unique"`
+	Age int
+	Phone string  `gorm:"type:varchar(10)"`
+	Pets []Pet
+}
+
+Test - 9: 
+Changing Data Type of Multiple Columns -- have to check for implicit type conversion
+
+type User struct {
+	gorm.Model
+	Name string `gorm:"unique"`
+	Age string
+	Phone int  
+	Pets []Pet
+}
+
+//But while doing this , if already data exists... what we have to do?
+The queries should create like these,other wise can modify and apply manual migrations
+"INSERT INTO updated_users (created_at, updated_at, deleted_at, name, age) SELECT created_at, updated_at, deleted_at, name, CAST(age AS DECIMAL(10, 2)) FROM users"
+
+Test - 10: 
+Removing Multiple Columns
+type User struct {
+	gorm.Model
+	Name string `gorm:"unique"`
+	Pets []Pet
+}
+
+
+Test - 15
+Adding Triggers
+// Assuming you have a GORM DB instance called `db`
+Manually we have to do.. with gorm we dont have supporte gorm triggers
+// Define the SQL code for your trigger
+sql := `
+    CREATE TRIGGER my_trigger
+    AFTER INSERT ON your_table
+    FOR EACH ROW
+    BEGIN
+        -- Your trigger logic here
+    END;
+`
+
+// Execute the SQL code to create the trigger
+db.Exec(sql)
+
+
+Test - 16
+Modifying Primary Key
+
+type User struct {
+	gorm.Model
+	CustomID   uint `gorm:"primaryKey"`
+	Name string `gorm:"unique"`
+	Pets []Pet
+}
+func (User) PrimaryKey() string {
+    return "CustomID"
+}
+
+//This is when you are intially creating.. 
+But when doing with an existing table, we have to do some thing more manual workn
+Will be availabe in primarykey.txt file
+
+Test - 17 
+Adding Check Constraints
+type User struct {
+	gorm.Model
+	CustomID   uint `gorm:"primaryKey"`
+	Name string `gorm:"unique" CHECK(length(name) >= 3)`
+	Pets []Pet
+}
+
+Test - 18
+Renaming Multiple Columns
+
+type Pet struct {
+	gorm.Model
+	PetName     string
+	Owner     Owner
+	UserID   uint `gorm:"index:,class:FULLTEXT,comment:hello \\, world,where:age > 10"`
+}
+
+//Adding views will be like triggers... in gorm doesn't support inbuilt views...
+Test Case - 26
+Modifying index types and that will be done by executing queries
+if you are using PostgreSQL, you can create an index with a specific type (e.g., a B-tree index) like this:
+
+go
+Copy code
+type User struct {
+    gorm.Model
+    Name string `gorm:"index:idx_name USING btree"`
+}
+
+
+//The rest of the test cases will be done manually.. doesn't invlove with gorm structs......
+

@@ -1,0 +1,1 @@
+pg-online-schema-change perform --alter-statement 'ALTER TABLE "pets" RENAME COLUMN "name" TO "pet_name" text NULL' --dbname "TestDB" --host "localhost" --username "postgres"

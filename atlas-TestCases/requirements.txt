@@ -1,0 +1,278 @@
+//So, we can do one thing... 
+
+///Error: sql/migrate: taking database snapshot: sql/migrate: connected database is not clean: found table - this occurs with when initial migrations got applied
+
+
+Initially done - migrations using 
+
+atlas migrate diff --env gorm
+
+then apply migrations with baseline
+
+atlas migrate apply --url "db_url" --dir "file://migrations"  
+
+for this we can use
+
+--allow-dirty (if table has done any updations manually, to continue with them)
+--dry-run (to not implement migrations instead of it we can know what going to happen)
+
+//And once done...
+
+Now to atler the structs, 
+
+We can follow the below steps
+
+-> Change the structs what you want
+-> Now Write the all the sql schemas in a file for the changes you have done
+-> Save it in migrations
+
+-> then ,run the below command
+
+-> When we are doing this, we should always need to create a new migration file 
+
+.\atlas migrate apply --url "mysql://root:root@:3306/sample" --dir "file://migrations"
+
+//This will apply the migrations to the db.
+
+
+
+
+----------------
+
+atlas schema inspect --url "our db" | tee schema.hcl 
+//this will store the schema...  so that later we can modify the exisiting schema and update and apply migrations
+
+
+
+//for manual changes we can use atlas schema apply -- url "db" --file "our schema file.hcl"
+
+
+MYSQL:
+# When working on a single database schema.
+--dev-url "docker://mysql/8/schema"
+
+# When working on multiple database schemas.
+--dev-url "docker://mysql/8"
+
+POSTGRES:
+
+dev = "docker://postgres/15"
+
+# When working on a single database schema, use the auth-created
+# "public" schema as the search path.
+--dev-url "docker://postgres/15/dev?search_path=public"
+
+# When working on multiple database schemas.
+--dev-url "docker://postgres/15/dev"
+
+
+//To Import Existing migrations
+    This is used whenever we required to work on an existring db where the tables were created and contains some data in it. That means there exist a migration schema of the tables.
+atlas migrate import --from "file://old_schema?format=liquibase" --to "file://migrations"
+
+///While trying to change the datatype which doesn't automatically convert (doesn't allow Implicit Conversions) those causing error to apply migrations
+In those cases we can modify the sql statements, and apply the migrations.
+
+
+
+atlas migrate diff --env "local" --var "destructive=true"
+
+
+----------------------------###########----------------------------
+PT-ONLINE-SCHEMA-CHANGE - alter tables without locking them.
+
+Syntax:
+    pt-online-schema-change [options] DSN
+
+Ex: 
+Change sakila.actor to InnoDB, effectively performing OPTIMIZE TABLE in a non-blocking fashion because it is already an InnoDB table:
+
+    pt-online-schema-change --alter "ENGINE=InnoDB" D=sakila,t=actor
+
+RISKS
+Percona Toolkit is mature, proven in the real world, and well tested, but all database tools can pose a risk to the system and the database server. Before using this tool, please:
+
+    Read the tool’s documentation
+
+    Review the tool’s known “BUGS”
+
+    Test the tool on a non-production server
+
+    Backup your production server and verify the backups
+
+pt-online-schema-change works by creating an empty copy of the table to alter, modifying it as desired, and then copying rows from the original table into the new table. When the copy is complete, it moves away the original table and replaces it with the new one. By default, it also drops the original table
+
+NOTE: the tool will not work if any triggers are already defined on the table.
+
+==>The tool must update foreign keys to refer to the new table after the schema change is complete. The tool supports two methods for accomplishing this. You can read more about this in the documentation for --alter-foreign-keys-method.
+
+==>The tool does not modify the table unless you specify the --execute option, which is not enabled by default.
+
+Some Conditions :
+    In most cases the tool will refuse to operate unless a PRIMARY KEY or UNIQUE INDEX is present in the table. See --alter for details.
+
+    The tool refuses to operate if it detects replication filters. See --[no]check-replication-filters for details.
+
+    The tool pauses the data copy operation if it observes any replicas that are delayed in replication. See --max-lag for details.
+
+    The tool pauses or aborts its operation if it detects too much load on the server. See --max-load and --critical-load for details.
+
+    The tool sets innodb_lock_wait_timeout=1 and (for MySQL 5.5 and newer) lock_wait_timeout=60 so that it is more likely to be the victim of any lock contention, and less likely to disrupt other transactions. These values can be changed by specifying --set-vars.
+
+    The tool refuses to alter the table if foreign key constraints reference it, unless you specify --alter-foreign-keys-method.
+
+    The tool cannot alter MyISAM tables on “Percona XtraDB Cluster” nodes.
+
+
+pt-online-schema-change works with only InnoDB tables then can be altered.
+
+
+OPTIONS
+
+--dry-run and --execute are mutually exclusive.
+
+--alter 
+type: string : The schema modification, without the ALTER TABLE keywords. You can perform multiple modifications to the table by specifying them with commas.
+    If you add a column without a default value and make it NOT NULL, the tool will fail, as it will not try to guess a default value for you; You must specify the default.
+
+    DROP FOREIGN KEY constraint_name requires specifying _constraint_name rather than the real constraint_name. Due to a limitation in MySQL, pt-online-schema-change adds a leading underscore to foreign key constraint names when creating the new table. For example, to drop this constraint:
+
+    CONSTRAINT `fk_foo` FOREIGN KEY (`foo_id`) REFERENCES `bar` (`foo_id`)
+    You must specify --alter "DROP FOREIGN KEY _fk_foo".
+
+    Be sure to verify the new table if using MySQL 5.0 and converting from MyISAM to InnoDB!
+
+--alter-foreign-keys-method
+type: string
+How to modify foreign keys so they reference the new table. Foreign keys that reference the table to be altered must be treated specially to ensure that they continue to reference the correct table
+
+The tool supports two techniques to achieve this. It automatically finds “child tables” that reference the table to be altered.
+    "auto"
+        "rebuild_constraints" -- The tool determines that by comparing the number of rows in the child table to the rate at which the tool is able to copy rows from the old table to the new table. If the tool estimates that the child table can be altered in less time than the --chunk-time, then it will use this technique. 
+                        Due to a limitation in MySQL, foreign keys will not have the same names after the ALTER that they did prior to it. The tool has to rename the foreign key when it redefines it, which adds a leading underscore to the name. In some cases, MySQL also automatically renames indexes required for the foreign key.
+        
+        "drop_swap" -- Disable foreign key checks (FOREIGN_KEY_CHECKS=0) then drop the original table before renaming the new table into its place.
+                This method is faster and does not block, but it is riskier for two reasons.
+                        First, for a short time between dropping the original table and renaming the temporary table, the table to be altered simply does not exist, and queries against it will result in an error.
+                        Secondly, if there is an error and the new table cannot be renamed into the place of the old one, then it is too late to abort, because the old table is gone permanently.
+
+                        This method forces --no-swap-tables and --no-drop-old-table.
+
+    "none" -- This method is like drop_swap without the “swap”. 
+
+--[no]analyze-before-swap
+default: yes
+    Execute ANALYZE TABLE on the new table before swapping with the old one. By default, this happens only when running MySQL 5.6 and newer, and innodb_stats_persistent is enabled. Specify the option explicitly to enable or disable it regardless of MySQL version and innodb_stats_persistent.
+
+--ask-pass
+    Prompt for a password when connecting to MySQL.
+
+--channel
+type: string 
+    use this same slave connected to different channels
+
+
+--charset
+short form: -A; 
+type: string
+
+--[no]check-alter
+default: yes
+    Parses the --alter specified and tries to warn of possible unintended behavior. Currently, it checks for:
+        Column renames
+        DROP PRIMARY KEY
+
+--[no]check-foreign-keys
+default: yes
+    Check for self-referencing foreign keys. Currently self referencing FKs are not full supported, so, to prevent errors, this program won’t run if the table has self-referencing foreign keys. Use this parameter to disable self-referencing FK checks.
+
+--chunk-size
+type: size; default: 1000
+    Number of rows to select for each chunk copied. Allowable suffixes are k, M, G.
+
+--config
+type: Array
+    Read this comma-separated list of config files; if specified, this must be the first option on the command line.
+
+--database
+short form: -D; type: string
+    Connect to this database.
+
+--default-engine
+Remove ENGINE from the new table.
+    Specifying this option causes the new table to be created with the system’s default engine.
+
+--[no]drop-new-table
+default: yes    
+    Drop the new table if copying the original table fails.
+    Specifying --no-drop-new-table and --no-swap-tables leaves the new, altered copy of the table without modifying the original table. See --new-table-name.
+    –no-drop-new-table does not work with alter-foreign-keys-method drop_swap.
+
+--[no]drop-old-table
+default: yes
+    Drop the original table after renaming it. After the original table has been successfully renamed to let the new table take its place, and if there are no errors, the tool drops the original table by default. If there are any errors, the tool leaves the original table in place.
+    If --no-swap-tables is specified, then there is no old table to drop.
+
+--[no]drop-triggers
+default: yes
+    Drop triggers on the old table. --no-drop-triggers forces --no-drop-old-table.
+    
+--dry-run
+    Create and alter the new table, but do not create triggers, copy data, or replace the original table.
+
+--execute
+    Indicate that you have read the documentation and want to alter the table. 
+
+--[no]check-unique-key-change
+default: yes
+    Avoid pt-online-schema-change to run if the specified statement for --alter is trying to add an unique index. Since pt-online-schema-change uses INSERT IGNORE to copy rows to the new table, if the row being written produces a duplicate key, it will fail silently and data will be lost.
+
+--force
+    This options bypasses confirmation in case of using alter-foreign-keys-method = none , which might break foreign key constraints
+
+--host
+short form: -h; type: string
+    Connect to host.
+
+--new-table-name
+type: string; default: %T_new
+    New table name before it is swapped. %T is replaced with the original table name. When the default is used, the tool prefixes the name with up to 10 _ (underscore) to find a unique table name. If a table name is specified, the tool does not prefix it with _, so the table must not exist.
+
+--null-to-not-null
+    Allows MODIFYing a column that allows NULL values to one that doesn’t allow them. The existing rows which contain NULL values will be converted to the default value based on datatype, e.g. 0 for number datatypes, ‘’ for string datatypes. New rows will use the user defined default value if specified for the column.
+
+--password
+short form: -p; type: string
+    Password to use when connecting. If password contains commas they must be escaped with a backslash: “exam\,ple”
+
+--pause-file
+type: string
+    Execution will be paused while the file specified by this param exists.
+
+--port
+short form: -P; type: int
+    Port number to use for connection.
+
+--print
+    Print SQL statements to STDOUT. Specifying this option allows you to see most of the statements that the tool executes. You can use this option with --dry-run, for example.
+
+--progress
+type: array; default: time,30
+    Print progress reports to STDERR while copying rows. The value is a comma-separated list with two parts. The first part can be percentage, time, or iterations; the second part specifies how often an update should be printed, in percentage, seconds, or number of iterations.
+
+--recurse
+type: int
+    Number of levels to recurse in the hierarchy when discovering replicas. Default is infinite.
+
+--statistics
+    Print statistics about internal counters. This is useful to see how many warnings were suppressed compared to the number of INSERT.
+
+--[no]swap-tables
+default: yes
+    Swap the original table and the new, altered table. 
+    This step completes the online schema change process by making the table with the new schema take the place of the original table.
+    Using --no-swap-tables will run the whole process, it will create the new table, it will copy all rows but at the end it will drop the new table.
+
+--user
+short form: -u; type: string
+    User for login if not current user.
