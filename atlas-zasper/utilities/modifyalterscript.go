@@ -73,7 +73,6 @@ func CreateFile(filename string, file_body string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//here no need of scanner right.. in this method lets alter..
 }
 
 //#---------------#-------------------#
@@ -81,7 +80,6 @@ func CreateFile(filename string, file_body string) {
 // Make sure the migrations generated are the same type you are calling..
 func UpdateAltersMysql(scanner *bufio.Scanner, alter_statements *string, table_name *string, flag *int, content string) {
 
-	//Shall I need to move this block into a separate method
 	*table_name = strings.Split(content, " ")[2]
 	content = strings.TrimSpace(content[strings.Index(content, *table_name) : len(content)-1])
 	content_queries := strings.Split(content, ",")
@@ -115,18 +113,11 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, tabl
 	for i := 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
 		*flag += 1
 		if strings.Count(content, "DROP COUMN") == 1 && strings.Count(content, "ADD COLUMN") == 1 {
-			if strings.Contains(content_queries[i], "DROP COLUMN") {
-				if strings.Contains(content_queries[i+1], "ADD COLUMN") {
-					old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
-					new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
-					*alter_statements += "ALTER TABLE " + *table_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";"
-					i += 1
-					//Here this nested condition for the purpose of Drop Column Removal ...
-				}
-			} else {
-				*alter_statements += content_queries[i] + ","
-			}
-		} else {
+			old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
+			new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
+			*alter_statements += "ALTER TABLE " + *table_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";"
+			i += 1
+		} else if !strings.Contains(content, "DROP COUMN") {
 			*alter_statements += content_queries[i] + ","
 		}
 	}
