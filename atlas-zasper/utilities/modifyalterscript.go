@@ -36,35 +36,32 @@ func GetAbsolutePath(relativePath string) string {
 func GetFileName() string {
 	relativePath := "migrations/atlas.sum"
 
-	// Get the current working directory
 	absolutePath := GetAbsolutePath(relativePath)
-	f, err := os.Open(absolutePath) //we  have to modify the path
+	scanner, file, err := GetFileScanner(absolutePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer file.Close()
 
 	var filename string
-	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		filename = scanner.Text()
 	}
-	ofilename := strings.Split(filename, " ")
-	return ofilename[0]
+	return strings.Split(filename, " ")[0]
+
 }
 
-func GetFileScanner(absolutePath string) *bufio.Scanner {
+func GetFileScanner(absolutePath string) (*bufio.Scanner, *os.File, error) {
 	f, err := os.Open(absolutePath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
-	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
-	return scanner
+	return scanner, f, nil
 }
 
 // This will Create a file and writes
@@ -78,6 +75,7 @@ func CreateFile(filename string, file_body string) {
 //#---------------#-------------------#
 
 // Make sure the migrations generated are the same type you are calling..
+// MySQL hasn't tested... need to do some modifications to alterations as it may create issues while Renaming..
 func UpdateAltersMysql(scanner *bufio.Scanner, alter_statements *string, table_name *string, flag *int, content string) {
 
 	*table_name = strings.Split(content, " ")[2]
@@ -103,6 +101,7 @@ func UpdateAltersMysql(scanner *bufio.Scanner, alter_statements *string, table_n
 
 }
 
+// This was done.
 func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, table_name *string, flag *int, content string) {
 
 	//Here there causing error when ALTER TABLE public.tablename isn't followed..
@@ -165,20 +164,23 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 
 func UpdateMigrations(scanner *bufio.Scanner, dbtype string) (filec string) {
 	//Variable Declaration & Initialization
-	var file_content, alter_statements = "", ""
+	var file_content, alter_statements, flag = "", "", 0
 	var table_name string
-	var flag = 0
 	var alters_map = make(map[string]string)
 
 	//UpdateQueries... and Update Alters...
 	UpdateQueries(scanner, &alter_statements, &file_content, &table_name, &flag, alters_map, dbtype)
-
-	if dbtype == "mysql" {
-		for key, value := range alters_map {
-			GenerateShFiles(value, key, dbtype)
+	//here need to condition to check the alter_statements were updated ...
+	if alter_statements != "" && file_content != "" && table_name != "" {
+		if dbtype == "mysql" {
+			for key, value := range alters_map {
+				GenerateShFiles(value, key, dbtype)
+			}
+		} else {
+			GenerateShFiles(alter_statements, `"postgres"`, dbtype) //-- this should generate the .sh file
 		}
 	} else {
-		GenerateShFiles(alter_statements, `"postgres"`, dbtype) //-- this should generate the .sh file
+		log.Fatal("No New Migrations Found")
 	}
 	return strings.Replace(file_content, "\n\n", "\n", 1)
 }
@@ -206,22 +208,15 @@ func AlterMigrationScripts() {
 	filename := GetFileName()
 	relativePath := "migrations\\" + filename
 	absolutePath := GetAbsolutePath(relativePath)
-	//scanner := GetFileScanner(absolutePath) //scanner is not generating..
-	//From here have to check once...
-	f, err := os.Open(absolutePath)
+	scanner, file, err := GetFileScanner(absolutePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	//===== the method isn't working.. so will see later..
+	defer file.Close()
 	LoadEnv()
 	dbType := os.Getenv("DB_TYPE")
 	file_content := UpdateMigrations(scanner, dbType) //we can take this from environment variables
-	CreateFile(absolutePath, file_content)
-
+	if file_content != "" {
+		CreateFile(absolutePath, file_content)
+	}
 }
