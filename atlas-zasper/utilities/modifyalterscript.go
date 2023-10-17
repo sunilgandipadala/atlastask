@@ -110,18 +110,23 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, tabl
 	content = strings.TrimSpace(content[strings.Index(content, *table_name)+len(*table_name) : len(content)-1])
 	content_queries := strings.Split(content, ",")
 
-	for i := 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
+	var i int
+	for i = 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
 		*flag += 1
+
 		if strings.Count(content, "DROP COUMN") == 1 && strings.Count(content, "ADD COLUMN") == 1 {
 			old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
 			new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
 			*alter_statements += "ALTER TABLE " + *table_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";"
 			i += 1
-		} else if !strings.Contains(content, "DROP COUMN") {
-			*alter_statements += content_queries[i] + ","
+		} else if strings.Contains(content_queries[i], "ADD COLUMN") {
+			*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[i] + ";"
 		}
-	}
 
+	}
+	if i == len(content_queries)-1 && strings.Contains(content_queries[i], "ADD COLUMN") {
+		*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[i] + ";"
+	}
 	if *flag == 0 {
 		*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[0] + ";"
 	}
@@ -131,7 +136,6 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, tabl
 // This need to be updated at line 125 and 126
 func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_content *string, table_name *string, flag *int, alters_map map[string]string, dbtype string) {
 	for scanner.Scan() {
-
 		content := scanner.Text()
 		if strings.Contains(content, "DROP TABLE") {
 			if strings.Contains(content, "ADD TABLE") {
@@ -144,7 +148,7 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 		} else if strings.Contains(content, "ALTER TABLE") {
 
 			if dbtype == "mysql" {
-				*alter_statements = ""
+				//*alter_statements = ""
 				UpdateAltersMysql(scanner, alter_statements, table_name, flag, content)
 			} else if strings.Contains(content, "ALTER TABLE \"public\"") && (dbtype == "postgres") {
 				UpdateAltersPostgres(scanner, alter_statements, table_name, flag, content)
@@ -156,6 +160,7 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 			alters_map[*table_name] += *alter_statements
 		}
 	}
+
 }
 
 func UpdateMigrations(scanner *bufio.Scanner, dbtype string) (filec string) {
@@ -167,12 +172,13 @@ func UpdateMigrations(scanner *bufio.Scanner, dbtype string) (filec string) {
 
 	//UpdateQueries... and Update Alters...
 	UpdateQueries(scanner, &alter_statements, &file_content, &table_name, &flag, alters_map, dbtype)
+
 	if dbtype == "mysql" {
 		for key, value := range alters_map {
 			GenerateShFiles(value, key, dbtype)
 		}
 	} else {
-		GenerateShFiles(alter_statements, table_name, dbtype) //-- this should generate the .sh file
+		GenerateShFiles(alter_statements, `"postgres"`, dbtype) //-- this should generate the .sh file
 	}
 	return strings.Replace(file_content, "\n\n", "\n", 1)
 }
@@ -187,8 +193,8 @@ func GenerateShFiles(alter_statements string, table_name string, dbtype string) 
 	if dbtype == "postgres" {
 		script_text = "pg-online-schema-change perform --alter-statement '" + alter_statements + `' --dbname "` + os.Getenv("DB_NAME") + `" --host "` + os.Getenv("DB_HOST") + `" --username "` + os.Getenv("DB_USER") + `"`
 	}
-
-	relativePath := "alter-scripts/alter_" + table_name[1:len(table_name)-1] + ".sh"
+	var relativePath string
+	relativePath = "alter-scripts/alter_" + table_name[1:len(table_name)-1] + ".sh"
 	absolutePath := GetAbsolutePath(relativePath)
 	CreateFile(absolutePath, script_text)
 
@@ -198,17 +204,24 @@ func GenerateShFiles(alter_statements string, table_name string, dbtype string) 
 func AlterMigrationScripts() {
 
 	filename := GetFileName()
-
 	relativePath := "migrations\\" + filename
 	absolutePath := GetAbsolutePath(relativePath)
+	//scanner := GetFileScanner(absolutePath) //scanner is not generating..
+	//From here have to check once...
+	f, err := os.Open(absolutePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
 
-	scanner := GetFileScanner(absolutePath)
-
+	scanner := bufio.NewScanner(f)
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	//===== the method isn't working.. so will see later..
 	LoadEnv()
 	dbType := os.Getenv("DB_TYPE")
 	file_content := UpdateMigrations(scanner, dbType) //we can take this from environment variables
-
-	file := absolutePath + "\\" + filename //Here need to check for path importing
-	CreateFile(file, file_content)
+	CreateFile(absolutePath, file_content)
 
 }
