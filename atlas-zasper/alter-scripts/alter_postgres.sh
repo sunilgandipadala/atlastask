@@ -1,1 +1,1 @@
-pg-online-schema-change perform --alter-statement 'ALTER TABLE "customers" ADD COLUMN "Sunil" NOT NULL;ALTER TABLE "rules_Info"  ADD COLUMN "flowName1" character varying(255) NULL' --dbname "TestDB" --host "localhost" --username "postgres"
+pg-online-schema-change perform --alter-statement 'ALTER TABLE "rules_Info"  ADD COLUMN "flowName1" character varying(255) NULL' --dbname "TestDB" --host "localhost" --username "postgres"

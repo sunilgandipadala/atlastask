@@ -112,8 +112,10 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, tabl
 	var i int
 	for i = 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
 		*flag += 1
+		drop_count := strings.Count(content, "DROP COLUMN")
+		add_count := strings.Count(content, "ADD COLUMN")
 
-		if strings.Count(content, "DROP COUMN") == 1 && strings.Count(content, "ADD COLUMN") == 1 {
+		if drop_count == 1 && add_count == 1 {
 			old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
 			new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
 			*alter_statements += "ALTER TABLE " + *table_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";"
@@ -195,8 +197,8 @@ func GenerateShFiles(alter_statements string, table_name string, dbtype string) 
 	if dbtype == "postgres" {
 		script_text = "pg-online-schema-change perform --alter-statement '" + alter_statements + `' --dbname "` + os.Getenv("DB_NAME") + `" --host "` + os.Getenv("DB_HOST") + `" --username "` + os.Getenv("DB_USER") + `"`
 	}
-	var relativePath string
-	relativePath = "alter-scripts/alter_" + table_name[1:len(table_name)-1] + ".sh"
+
+	relativePath := "alter-scripts/alter_" + table_name[1:len(table_name)-1] + ".sh"
 	absolutePath := GetAbsolutePath(relativePath)
 	CreateFile(absolutePath, script_text)
 
