@@ -1,0 +1,2 @@
+-- Modify "rules_Info" table
+-- Modify "userdetails" table

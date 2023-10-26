@@ -1,6 +1,7 @@
 package utilities
 
 import (
+	"atlastask/models"
 	"bufio"
 	"fmt"
 	"log"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/joho/godotenv"
 )
+
+var File_count = 0
+var PreviousList map[string][]string
 
 func LoadEnv() {
 	err := godotenv.Load()
@@ -45,6 +49,7 @@ func GetFileName() string {
 
 	var filename string
 	for scanner.Scan() {
+		File_count += 1
 		filename = scanner.Text()
 	}
 	return strings.Split(filename, " ")[0]
@@ -104,39 +109,15 @@ func UpdateAltersMysql(scanner *bufio.Scanner, alter_statements *string, table_n
 // This was done.
 func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, table_name *string, flag *int, content string) {
 
-	//Here there causing error when ALTER TABLE public.tablename isn't followed..
 	*table_name = strings.Split(strings.Split(content, " ")[2], ".")[1] //it excludes public
-	content = strings.TrimSpace(content[strings.Index(content, *table_name)+len(*table_name) : len(content)-1])
-	content_queries := strings.Split(content, ",")
 
-	var i int
-	for i = 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
-		*flag += 1
-		drop_count := strings.Count(content, "DROP COLUMN")
-		add_count := strings.Count(content, "ADD COLUMN")
-
-		//Even there is an issue - as if some one has done one column removal and added one column to the struct it causes error
-		if drop_count == 1 && add_count == 1 {
-			old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
-			new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
-			*alter_statements += "ALTER TABLE " + *table_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";"
-			i += 1
-		} else if strings.Contains(content_queries[i], "ADD COLUMN") {
-			*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[i] + ";"
-		}
-
-	}
-	if i == len(content_queries)-1 && strings.Contains(content_queries[i], "ADD COLUMN") {
-		*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[i] + ";"
-	}
-	if *flag == 0 {
-		*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[0] + ";"
-	}
-
+	add_stmts, _, rename_stmts := AlterScripts(*table_name)
+	*alter_statements += add_stmts + rename_stmts + ";"
 }
 
 // This need to be updated at line 125 and 126
 func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_content *string, table_name *string, flag *int, alters_map map[string]string, dbtype string) {
+	AssignListofStmts()
 	for scanner.Scan() {
 		content := scanner.Text()
 		if strings.Contains(content, "DROP TABLE") {
@@ -216,8 +197,60 @@ func AlterMigrationScripts() {
 	defer file.Close()
 	LoadEnv()
 	dbType := os.Getenv("DB_TYPE")
+	//fmt.Println("==========================Previous List==================:", PreviousList)
 	file_content := UpdateMigrations(scanner, dbType) //we can take this from environment variables
 	if file_content != "" {
 		CreateFile(absolutePath, file_content)
 	}
+	PreviousList = New_list
+}
+
+func AssignListofStmts() {
+	New_list = models.GetNewColumnList()
+	if File_count == 1 {
+		old_list = New_list
+	} else {
+		//old_list = PreviousList
+		old_list = GetColumnList()
+	}
+}
+func GetColumnList() map[string][]string {
+	old_data := `CREATE TABLE "customers" ("id" bigserial,"first_name" varchar(255),"last_name" varchar(255),"age" bigint,"email" varchar(50) NOT NULL,"gender" varchar(10),"address1" varchar(255),"address2" varchar(255),"city" varchar(255),"state" varchar(100),"country" varchar(100),"zipcode" varchar(50),"phone" varchar(20),"subscribed" boolean,"subscribed_at" timestamptz,"s1" bigint,"s2" bigint,"s3" varchar(50),"q" varchar(255),"l" varchar(255),"ongage_contact_id" varchar(255),"ongage_status" bigint,"oversight_contact_id" varchar(255),"oversight_status" bigint,"validation" varchar(255),"validation_date" timestamptz,"processed" boolean,"processed_date" timestamptz,"tz" text,"opt_in_phone" boolean,"dob" text,"click_ip" text,"pushnami_id" varchar(255),"optin_phone" bigint,"last_visit" timestamptz,"user_agent" varchar(100),"optin_ip" varchar(50),"optin_url" varchar(100),"optin_time" timestamptz,"utm_source" varchar(100),"utm_medium" varchar(100),"utm_campaign" varchar(100),"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE INDEX IF NOT EXISTS "idx_created_at" ON "customers" ("created_at");
+	CREATE INDEX IF NOT EXISTS "idx_phone" ON "customers" ("phone");
+	CREATE UNIQUE INDEX IF NOT EXISTS "idx_customers_email" ON "customers" ("email");
+	CREATE TABLE "work_flow_json_details" ("id" uuid DEFAULT gen_random_uuid(),"name" text NOT NULL,"json" text,"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE UNIQUE INDEX IF NOT EXISTS "idx_work_flow_json_details_name" ON "work_flow_json_details" ("name");
+	CREATE INDEX IF NOT EXISTS "idx_name_created_at" ON "work_flow_json_details" ("name","created_at");
+	CREATE TABLE "buyergroups" ("id" bigserial,"groupName" varchar(100) NOT NULL,"buyerIds" varchar(100),"priority" varchar(100),"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE INDEX IF NOT EXISTS "idx_created_at" ON "buyergroups" ("created_at");
+	CREATE UNIQUE INDEX IF NOT EXISTS "idx_buyergroups_group_name" ON "buyergroups" ("groupName");
+	CREATE TABLE "buyers" ("id" bigserial,"name" varchar(255) NOT NULL,"price" decimal,"webhookUrl" text,"webhookMethod" varchar(20),"webhookTimeout" varchar(30),"headers" text,"requestBody" text,"httpAuthUsername" varchar(20),"httpAuthPassword" varchar(20),"responseModel" text,"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE INDEX IF NOT EXISTS "idx_created_at" ON "buyers" ("created_at");
+	CREATE UNIQUE INDEX IF NOT EXISTS "idx_buyers_name" ON "buyers" ("name");
+	CREATE TABLE "lead_post_history" ("id" bigserial,"buyer_id" bigint,"trace_id" text,"buyer_group_id" bigint,"customer_id" bigint,"knowledge_base_name" 
+	varchar(100),"rule_manifest_id" varchar(255),"rulemanifest_status" varchar(100),"response_code" bigint,"status" varchar(255),"response" TEXT,"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE INDEX IF NOT EXISTS "idx_rule_manifest_id_customer_id" ON "lead_post_history" ("customer_id","rule_manifest_id");
+	CREATE INDEX IF NOT EXISTS "idx_customer_id" ON "lead_post_history" ("customer_id");
+	CREATE INDEX IF NOT EXISTS "idx_trace_id" ON "lead_post_history" ("trace_id");
+	CREATE INDEX IF NOT EXISTS "idx_created_at_buyer_id_status" ON "lead_post_history" ("buyer_id","status","created_at");
+	CREATE TABLE "rules_Info" ("id" bigserial,"flowName" varchar(255),"name" TEXT,"manifest" TEXT,"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("id"));
+	CREATE INDEX IF NOT EXISTS "idx_name_created_at" ON "rules_Info" ("created_at");
+	CREATE TABLE "userdetails" ("id" bigserial,"userName" varchar(100),"password" varchar(100),"email" varchar(50),PRIMARY KEY ("id"));
+	CREATE TABLE "customer_profiles" ("customer_id" bigserial,"user_id" bigint,"edu_level" varchar(255),"edu_interest" varchar(255),"edu_updated_at" timestamptz,"deleted_at" timestamptz,"test_id" bigint,"health_insurance" varchar(255),"health_multiple_prescription" varchar(255),"health_diabetic" varchar(255),"health_cpap" varchar(255),"health_low_income" varchar(255),"health_back_pain" varchar(255),"health_updated_at" timestamptz,"finance_checking_account" varchar(255),"finance_debt_amount" varchar(255),"finance_debt" boolean,"finance_updated_at" timestamptz,"car_owner" varchar(255),"car_updated_at" timestamptz,"car_insurance" varchar(255),"car_license" text,"work_status" varchar(255),"work_updated_at" timestamptz,"edu_jornaya_token" varchar(255),"captcha_score" decimal,"captcha_updated_at" timestamptz,"navy_program" varchar(255),"us_citizen" boolean,"gpa_average" decimal,"fq_score" bigint,"fq_updated_at" timestamptz,"ranch" varchar(255),"brta_filt" varchar(255),"glad1" varchar(255),"glad2" varchar(255),"home_owner" varchar(255),"home_updated_at" timestamptz,"debt_type" varchar(255),"edu_grant" varchar(255),"finex" varchar(255),"demply" varchar(255),"clej" varchar(255),"auto_accident" 
+	varchar(255),"accident" varchar(50),"medicaid" varchar(50),"medicare" varchar(50),"auto_year" varchar(50),"auto_make" varchar(50),"auto_model" varchar(50),"additional_fields_db" text,"created_at" timestamptz,"updated_at" timestamptz,PRIMARY KEY ("customer_id"));
+	CREATE TABLE "workflow_execution" ("trace_id" uuid,"workflow_id" uuid,"payload" TEXT,"created_at" timestamptz,"updated_at" timestamptz);
+	CREATE INDEX IF NOT EXISTS "idx_name_created_at" ON "workflow_execution" ("created_at");
+	`
+
+	column_names_map := make(map[string][]string)
+	statements_arr := strings.Split(old_data, ";")
+	for _, stats := range statements_arr {
+		if strings.Contains(stats, "CREATE TABLE") {
+			table_name := strings.Split(stats, " ")[2] //it excludes public
+			stats := strings.TrimSpace(stats[strings.Index(stats, "\" (")+3 : len(stats)-2])
+			column_names_map[table_name] = strings.Split(stats, ",")
+		}
+	}
+	return column_names_map
 }
