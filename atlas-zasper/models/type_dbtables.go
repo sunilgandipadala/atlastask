@@ -12,7 +12,6 @@ var DATABASE_APPLICATION_TABLES = []DatabaseTableInterface{
 	LeadPostHistory{},
 	Rules{},
 	UserCredentials{},
-	Customer{},
 	CustomerProfile{},
 	WorkFlowExecution{},
 }

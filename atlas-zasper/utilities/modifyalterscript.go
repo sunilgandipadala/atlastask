@@ -115,6 +115,7 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, tabl
 		drop_count := strings.Count(content, "DROP COLUMN")
 		add_count := strings.Count(content, "ADD COLUMN")
 
+		//Even there is an issue - as if some one has done one column removal and added one column to the struct it causes error
 		if drop_count == 1 && add_count == 1 {
 			old_column_name := strings.TrimSpace(content_queries[i][strings.Index(content_queries[i], "DROP COLUMN")+11:])
 			new_column_name := strings.TrimSpace(content_queries[i+1][strings.Index(content_queries[i+1], "ADD COLUMN")+10:])
@@ -149,7 +150,7 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 		} else if strings.Contains(content, "ALTER TABLE") {
 
 			if dbtype == "mysql" {
-				//*alter_statements = ""
+				*alter_statements = ""
 				UpdateAltersMysql(scanner, alter_statements, table_name, flag, content)
 			} else if strings.Contains(content, "ALTER TABLE \"public\"") && (dbtype == "postgres") {
 				UpdateAltersPostgres(scanner, alter_statements, table_name, flag, content)
@@ -170,9 +171,7 @@ func UpdateMigrations(scanner *bufio.Scanner, dbtype string) (filec string) {
 	var table_name string
 	var alters_map = make(map[string]string)
 
-	//UpdateQueries... and Update Alters...
 	UpdateQueries(scanner, &alter_statements, &file_content, &table_name, &flag, alters_map, dbtype)
-	//here need to condition to check the alter_statements were updated ...
 	if alter_statements != "" && file_content != "" && table_name != "" {
 		if dbtype == "mysql" {
 			for key, value := range alters_map {

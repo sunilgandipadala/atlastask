@@ -23,6 +23,7 @@ func main() {
 		//Rest of the Code
 		//Server Initialization and switch casess
 		fmt.Println("Alter migrate")
-		utilities.AlterMigrationScripts()
+		//utilities.AlterMigrationScripts()
+		utilities.AlterScripts()
 	}
 }
