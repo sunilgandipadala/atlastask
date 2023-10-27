@@ -15,7 +15,7 @@ type Buyer struct {
 	Name                string                 `json:"name" gorm:"column:name;type:varchar(255);uniqueindex;not null"`
 	Price               float64                `json:"price" gorm:"column:price"`
 	WebhookUrl          string                 `json:"webhookUrl" gorm:"column:webhookUrl;type:text"`
-	WebhookMethod       string                 `json:"webhookMethod" gorm:"column:webhookMethod;type:varchar(20)"`
+	WebhookMethod       string                 `json:"webhookMethod" gorm:"column:webhookMethod;type:varchar(55)"`
 	WebhookTimeout      string                 `json:"webhookTimeout" gorm:"column:webhookTimeout;type:varchar(30)"`
 	HeadersStruct       []Header               `json:"headers" gorm:"-"`
 	HeadersDb           *string                `json:"-" gorm:"column:headers;type:text"`

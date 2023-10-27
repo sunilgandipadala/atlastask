@@ -14,7 +14,7 @@ func (Customer) GetObject() Customer {
 
 type Customer struct {
 	ID                 int64      `json:"id" gorm:"column:id;type:bigint;primary_key;AUTO_INCREMENT"`
-	FirstName          *string    `json:"first_name,omitempty" gorm:"column:first_name;type:varchar(255)"`
+	FirstName          *string    `json:"first_name,omitempty" gorm:"column:full_name;type:varchar(255)"`
 	LastName           *string    `json:"last_name,omitempty" gorm:"column:last_name;type:varchar(255)"`
 	Age                *int64     `json:"age,omitempty" gorm:"column:age"`
 	Email              string     `json:"email,omitempty" gorm:"column:email;type:varchar(50);uniqueindex;not null"`
@@ -56,8 +56,10 @@ type Customer struct {
 	UTMMedium          *string    `json:"utm_medium,omitempty" gorm:"column:utm_medium;type:varchar(100)"`
 	UTMCampaign        *string    `json:"utm_campaign,omitempty" gorm:"column:utm_campaign;type:varchar(100)"`
 	CreatedAt          time.Time  `json:"created_at,omitempty" gorm:"index:idx_created_at"`
+	Newone             *string    `json:"newone,omitempty" gorm:"column:newone;type:varchar(255)"`
 	UpdatedAt          time.Time  `json:"updated_at,omitempty"`
-	Pet_Name           *string    `json:"pet_name,omitempty" gorm:"column:pet_name;type:varchar(255)"` //it is newly added---
+	//Pet_Name           *string    `json:"pet_name,omitempty" gorm:"column:pet_name;type:varchar(255)"` //it is newly added---
+
 }
 
 type Customers []*Customers

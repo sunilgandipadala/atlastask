@@ -107,9 +107,23 @@ func UpdateAltersMysql(scanner *bufio.Scanner, alter_statements *string, table_n
 }
 
 // This was done.
-func UpdateAltersPostgres(scanner *bufio.Scanner, alter_statements *string, table_name *string, flag *int, content string) {
+func UpdateAltersPostgres(scanner *bufio.Scanner, file_content *string, alter_statements *string, table_name *string, flag *int, content string) {
 
 	*table_name = strings.Split(strings.Split(content, " ")[2], ".")[1] //it excludes public
+	content = strings.TrimSpace(content[strings.Index(content, *table_name)+len(*table_name) : len(content)-1])
+	content_queries := strings.Split(content, ",")
+	temp := 0
+
+	for i := 0; i < len(content_queries); i++ {
+		fmt.Println("\nAll Content-Queries...", content_queries[i])
+		if !(strings.Contains(content_queries[i], "DROP COLUMN") || strings.Contains(content_queries[i], "ADD COLUMN") || strings.Contains(content_queries[i], "--")) {
+			if temp == 0 {
+				*file_content += "ALTER TABLE " + *table_name + " "
+			}
+			*file_content += content_queries[i] + ";"
+		}
+		temp += 1
+	}
 
 	add_stmts, _, rename_stmts := AlterScripts(*table_name)
 	if add_stmts != "" || rename_stmts != "" {
@@ -136,7 +150,7 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 				*alter_statements = ""
 				UpdateAltersMysql(scanner, alter_statements, table_name, flag, content)
 			} else if strings.Contains(content, "ALTER TABLE \"public\"") && (dbtype == "postgres") {
-				UpdateAltersPostgres(scanner, alter_statements, table_name, flag, content)
+				UpdateAltersPostgres(scanner, file_content, alter_statements, table_name, flag, content)
 			}
 		} else {
 			*file_content += content + "\n"
@@ -215,22 +229,9 @@ func UpdateOldList() {
 	}
 }
 
-func AssignListofStmts() {
-	New_list = models.GetNewColumnList()
-	fileData, err := os.ReadFile("data.txt")
-	if err != nil {
-		fmt.Println("Error reading data:", err)
-		return
-	}
-	// Convert the byte slice back to a string
-	retrieved_data := string(fileData)
-	old_list = GetColumnList(retrieved_data)
-}
-
 func GetColumnList(schema string) map[string][]string {
-	old_data := schema
 	column_names_map := make(map[string][]string)
-	statements_arr := strings.Split(old_data, ";")
+	statements_arr := strings.Split(schema, ";")
 	for _, stats := range statements_arr {
 		if strings.Contains(stats, "CREATE TABLE") {
 			table_name := strings.Split(stats, " ")[2] //it excludes public
