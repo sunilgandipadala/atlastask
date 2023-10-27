@@ -39,9 +39,6 @@ func AlterScripts(table_name string) (add_querie string, drop_querie string, ren
 		j += 1
 	}
 
-	fmt.Println("Added Columns:", add_queries)
-	fmt.Println("Dropped Columns:", drop_queries)
-	fmt.Println("Renamed Columns: ", rename_stmts)
 	return add_queries, drop_queries, rename_stmts
 }
 
@@ -58,7 +55,8 @@ func CategorizeStmts(table_name string, rename_stmts *string, add_queries *strin
 		}
 	} else if not_ok := PresentInList(new_column_list[*j], old_column_list); !not_ok { //there rasining some logical error will look into it..
 		//may be here... there is a special case we need to check for --renaming...in the end,...
-		*rename_stmts += "ALTER TABLE " + table_name + " " + "RENAME " + old_column_list[*i] + " COLUMN TO " + new_column_list[*j] + "\n"
+		col := strings.Split(old_column_list[*i], " ")[0]
+		*rename_stmts += "ALTER TABLE " + table_name + " " + "RENAME " + col + " COLUMN TO " + new_column_list[*j] + ";"
 		*i += 1
 		*j += 1
 	} else {
@@ -98,4 +96,11 @@ for i = 0; i+1 < len(content_queries) && len(content_queries) > 1; i++ {
 	if *flag == 0 {
 		*alter_statements += "ALTER TABLE " + *table_name + " " + content_queries[0] + ";"
 	}
+*/
+
+/* ======== The major task is to store the old_list and new_list updation =============
+
+--- we will get new_list everytime that is fine....
+--- In the same order how to get old_list
+
 */

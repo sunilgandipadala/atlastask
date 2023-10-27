@@ -57,6 +57,7 @@ type Customer struct {
 	UTMCampaign        *string    `json:"utm_campaign,omitempty" gorm:"column:utm_campaign;type:varchar(100)"`
 	CreatedAt          time.Time  `json:"created_at,omitempty" gorm:"index:idx_created_at"`
 	UpdatedAt          time.Time  `json:"updated_at,omitempty"`
+	Pet_Name           *string    `json:"pet_name,omitempty" gorm:"column:pet_name;type:varchar(255)"` //it is newly added---
 }
 
 type Customers []*Customers
