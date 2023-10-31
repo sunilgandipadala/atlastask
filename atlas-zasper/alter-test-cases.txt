@@ -27,3 +27,39 @@ ALTER INDEX IF EXISTS index_name RENAME TO modified_name;
 
 export PGPASSWORD ="our db password"
 pg-online-schema-change perform --alter-statement 'ALTER INDEX IF EXISTS unq_trace_id RENAME TO modified_name;'  --dbname "testdb" --host "localhost" --username "postgres" --wait-time-for-lock 5 --kill-backends --drop
+
+
+/atlas even doesn't recoginize rename statements
+
+//Here what's happening ..
+//The migrations will generate everytime compared to the new schema and the base line schema.. 
+//As we are removing the alter statements from the migration files .. even if we apply them to the db, the changes which were removed from the migration will be generated on the next
+migration generation. 
+//So, now -- we are generating the alter statements from the schema directly, it won't be a problem as we are dealing with schema - these alterstatements doesn't come into our way.. just everytime those will be get removed.
+
+//Everything works fine..
+
+
+//While executing should follow these steps.. 
+
+--Rules to Follow while modifying the models or fields..
+
+=> Should not perform Drop/ Adding a field  then RENAMING A COLUMN.. (it will raise logic error)
+=> Should add a new field at the end of all the fields...
+=> If Dropping a last field, then don't perform Adding a field.
+
+--Steps to Run Program Execution while applying the migrations.
+
+=> First Modify the fields of the models. 
+=> Then run  .\atlas migrate hash
+=> Then run .\atlas migrate diff --env gorm
+=> Then, you will be generated with a migration file...
+=> now run "go run main.go alter"
+=> It will modify the migration file and if any alters "alter_postgres.sh" also.
+=> Apply the migration file .\atlas migrate apply --env gorm --allow dirty
+=> Then using pg-online-schema-change execute the .sh file 
+
+By this, we get our changes applied to the db.
+Again same process.
+
+

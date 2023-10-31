@@ -15,7 +15,7 @@ func (WorkFlowJson) TableName() string {
 type WorkFlowJson struct {
 	Id     uuid.UUID `gorm:"type:uuid;default:gen_random_uuid()"`
 	Name   string    `json:"name,omitempty" gorm:"column:name;index:idx_name_created_at;uniqueindex;not null"`
-	JsonDb *string   `json:"-" gorm:"column:json"`
+	JsonDb *string   `json:"-" gorm:"column:jsonDB"`
 	//JsonStruct *Root     `json:"json" gorm:"-"`
 	JsonStruct *string   `json:"json_struct,omitempty" gorm:"-"`
 	CreatedAt  time.Time `json:"created_at,omitempty" gorm:"column:created_at;index:idx_name_created_at"`

@@ -114,8 +114,8 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, file_content *string, alter_st
 	content_queries := strings.Split(content, ",")
 	temp := 0
 
+	//This is for maintaining the remaining statements, other than ADD and DROP to be store it back to the same migration file
 	for i := 0; i < len(content_queries); i++ {
-		fmt.Println("\nAll Content-Queries...", content_queries[i])
 		if !(strings.Contains(content_queries[i], "DROP COLUMN") || strings.Contains(content_queries[i], "ADD COLUMN") || strings.Contains(content_queries[i], "--")) {
 			if temp == 0 {
 				*file_content += "ALTER TABLE " + *table_name + " "
@@ -124,8 +124,7 @@ func UpdateAltersPostgres(scanner *bufio.Scanner, file_content *string, alter_st
 		}
 		temp += 1
 	}
-
-	add_stmts, _, rename_stmts := AlterScripts(*table_name)
+	add_stmts, rename_stmts := AlterScripts(*table_name)
 	if add_stmts != "" || rename_stmts != "" {
 		*alter_statements += add_stmts + rename_stmts + ";"
 	}
@@ -145,17 +144,19 @@ func UpdateQueries(scanner *bufio.Scanner, alter_statements *string, file_conten
 				*file_content += ""
 			}
 		} else if strings.Contains(content, "ALTER TABLE") {
-
+			*alter_statements = ""
 			if dbtype == "mysql" {
-				*alter_statements = ""
 				UpdateAltersMysql(scanner, alter_statements, table_name, flag, content)
 			} else if strings.Contains(content, "ALTER TABLE \"public\"") && (dbtype == "postgres") {
 				UpdateAltersPostgres(scanner, file_content, alter_statements, table_name, flag, content)
+
 			}
 		} else {
 			*file_content += content + "\n"
 		}
-		if dbtype == "mysql" && *table_name != "" {
+		//Here why file content not getting updating..
+
+		if *table_name != "" && *alter_statements != "" {
 			alters_map[*table_name] += *alter_statements
 		}
 	}
@@ -169,16 +170,12 @@ func UpdateMigrations(scanner *bufio.Scanner, dbtype string) (filec string) {
 	var alters_map = make(map[string]string)
 
 	UpdateQueries(scanner, &alter_statements, &file_content, &table_name, &flag, alters_map, dbtype)
-	if alter_statements != "" && file_content != "" && table_name != "" {
-		if dbtype == "mysql" {
-			for key, value := range alters_map {
-				GenerateShFiles(value, key, dbtype)
-			}
-		} else {
-			GenerateShFiles(alter_statements, `"postgres"`, dbtype) //-- this should generate the .sh file
+	if alters_map != nil && table_name != "" {
+		for key, value := range alters_map {
+			GenerateShFiles(value, key, dbtype)
 		}
 	} else {
-		log.Fatal("No New Migrations Found")
+		fmt.Println("No New Alter Statements Found") //Here instead of existing the program, lets return an error and continue with the execution..7
 	}
 	return strings.Replace(file_content, "\n\n", "\n", 1)
 }

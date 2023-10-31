@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -29,7 +29,11 @@ func AtlasSchema(modelss []interface{}) {
 		os.Exit(1)
 	}
 	Statements = stmts
-	io.WriteString(os.Stdout, stmts)
+	logger := log.New(os.Stdout, "", 0)
+
+	// Use the logger to write the statement
+	logger.Println(stmts)
+	//io.WriteString(os.Stdout, stmts)
 }
 
 func GetNewColumnList() map[string][]string {

@@ -19,7 +19,7 @@ data "external_schema" "gorm" {
 env "gorm" {
   src = data.external_schema.gorm.url
   //url = "mysql://root:Sunil@513@:3306/employees"
-  url = "postgres://postgres:postgres@904@0.0.0.0:5432/TestDB?search_path=public&sslmode=disable"
+  url = "postgres://postgres:postgres@904@172.31.50.134:5432/TestDB?search_path=public&sslmode=disable"
   
   //to use versioned migration
   dev = "docker://postgres/15/dev"

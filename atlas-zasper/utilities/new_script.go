@@ -20,7 +20,7 @@ func PresentInList(samplecol string, sampleli []string) bool {
 
 func AssignListofStmts() {
 	New_list = models.GetNewColumnList()
-	fileData, err := os.ReadFile("data.txt")
+	fileData, err := os.ReadFile("data.txt") //in data.txt initially we don't need to place any creational schema...
 	if err != nil {
 		fmt.Println("Error reading data:", err)
 		return
@@ -38,7 +38,7 @@ func GetColumnNames(column_list []string) []string {
 	return column_names
 }
 
-func CategorizeStmts(table_name string, rename_stmts *string, add_queries *string, drop_queries *string, old_column_names []string, new_column_names []string, new_column_list []string, i, j *int) {
+func CategorizeStmts(table_name string, rename_stmts *string, add_queries *string, old_column_names []string, new_column_names []string, new_column_list []string, i, j *int) {
 	//better doing with column names only without properties
 	old_col := old_column_names[*i]
 	new_col := new_column_names[*j]
@@ -57,29 +57,22 @@ func CategorizeStmts(table_name string, rename_stmts *string, add_queries *strin
 		*i += 1
 		*j += 1
 	} else {
-		*drop_queries += "DROP COLUMN " + old_col + ";"
 		*i += 1
 	}
 }
 
-func AlterScripts(table_name string) (add_querie string, drop_querie string, rename_stmt string) {
+func AlterScripts(table_name string) (add_querie string, rename_stmt string) {
 
 	i, j := 0, 0
-	var rename_stmts, add_queries, drop_queries = "", "", ""
+	var rename_stmts, add_queries = "", ""
 	old_column_list := old_list[table_name] //we have to check that old_columns will be updated with new_columns once done with migration updates
 	new_column_list := New_list[table_name]
 	old_column_names := GetColumnNames(old_column_list)
 	new_column_names := GetColumnNames(new_column_list)
 
 	for i < len(old_column_list) && j < len(new_column_list) {
-		CategorizeStmts(table_name, &rename_stmts, &add_queries, &drop_queries, old_column_names, new_column_names, new_column_list, &i, &j)
+		CategorizeStmts(table_name, &rename_stmts, &add_queries, old_column_names, new_column_names, new_column_list, &i, &j)
 	}
-
-	/* this is not necessary
-	for i < len(old_column_names) {
-		drop_queries += "DROP COLUMN " + old_column_names[i] + ";"
-		i += 1
-	}*/
 	for j < len(new_column_names) {
 		if !strings.Contains(new_column_list[j], "PRIMARY KEY") {
 			add_queries += "ALTER TABLE " + table_name + " " + "ADD COLUMN " + new_column_list[j] + ";"
@@ -87,5 +80,5 @@ func AlterScripts(table_name string) (add_querie string, drop_querie string, ren
 		}
 	}
 
-	return add_queries, drop_queries, rename_stmts
+	return add_queries, rename_stmts
 }

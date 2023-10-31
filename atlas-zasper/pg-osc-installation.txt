@@ -48,3 +48,47 @@ pg-online-schema-change perform --alter-statement 'ALTER TABLE employees RENAME 
 
 
 C:\\Users\\SUNIL~1.GAN\\DOCUME~1\\TESTDB~1" --host "localhost" --port "5432" --username "postgres" --no-password --format=c --blobs --verbose "TestDB
+
+//How to connect same postgres env in both wsl and windows..
+
+//Get an WSL's IP Address -
+            for that type ifcongig in WSL command 
+            ex : inet addr:172.31.50.134 
+        Use this Ip and create server in PgAdmin 
+
+//Install PostgreSQL in wsl 
+
+Working on the same PostgreSQL database in WSL (Windows Subsystem for Linux) Ubuntu and Windows simultaneously requires a few steps to ensure that both environments can access the database. Here's a general guide on how to set this up:
+Install PostgreSQL on WSL Ubuntu:
+You should install PostgreSQL within your WSL Ubuntu environment if you haven't already. You can do this using your system's package manager. For example, you can use apt:
+
+        sudo apt-get update
+        sudo apt-get install postgresql
+
+
+Initialize the PostgreSQL Database:
+After installing PostgreSQL, initialize the database cluster:
+
+        sudo service postgresql start
+        sudo -u postgres initdb -D /var/lib/postgresql/data
+
+Allow Remote Connections:
+To access the PostgreSQL database from Windows, you need to modify the PostgreSQL configuration to allow remote connections. Edit the PostgreSQL configuration file:
+        sudo nano /etc/postgresql/{version}/main/pg_hba.conf
+    
+Add the following line to allow connections from all IP addresses (not recommended for production use):
+        host all all 0.0.0.0/0 md5
+
+
+Then, edit the PostgreSQL configuration file:
+        sudo nano /etc/postgresql/{version}/main/postgresql.conf
+
+Modify the listen_addresses to allow connections from all IP addresses:
+        listen_addresses = '*'
+
+After making these changes, restart PostgreSQL:
+        sudo service postgresql restart
+
+And finally here, you can access the db's in the same server 
+        psql -h {IP Adress} -U postgres -d db_name
+
